@@ -17,14 +17,12 @@ public:
 
 private:
     int OpenSerialPort(const std::string& device_name);
-    void TimerCB();
     void CmdVelCB(const geometry_msgs::msg::Twist::SharedPtr msg) const;
 
 private:
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr serial_pub_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_sub_;
-    rclcpp::TimerBase::SharedPtr timer_;
 
+private:
     std::string device_name_;
     int fd1_;
 };
