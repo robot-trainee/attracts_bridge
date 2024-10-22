@@ -2,7 +2,7 @@
 
 Stm32Bridge::Stm32Bridge() : Node("stm32_bridge_node")
 {
-    cmd_sub_ = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10, std::bind(&Stm32Bridge::CmdVelCB, this, std::placeholders::_1));
+    cmd_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("cmd_vel", 10, std::bind(&Stm32Bridge::CmdVelCB, this, std::placeholders::_1));
 
     // TODO: device_nameをパラメータに -> micro_ROSにするから適当でいっか
     device_name_ = "/dev/ttyACM0";
@@ -41,25 +41,53 @@ int Stm32Bridge::OpenSerialPort(const std::string& device_name)
     return fd1;
 }
 
-void Stm32Bridge::CmdVelCB(const geometry_msgs::msg::Twist::SharedPtr msg) const
+void Stm32Bridge::CmdVelCB(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
 {
-    char buf[24]; // メッセージのバッファーサイズを適切に制限
-    int bytes_written;
+    // インデックスを更新
+    idx_++;
+    if (idx_ >= 6)
+    {
+        idx_ = 0;
+    }
+    // idx_ = 0;
 
-    RCLCPP_INFO(this->get_logger(), "cmd_vel(x: %lf, y: %lf, omega: %lf)", msg->linear.x, msg->linear.y, msg->angular.z);
+    // 元データを確認
+    RCLCPP_INFO(
+        this->get_logger(), "cmd_vel(0: %lf, 1: %lf, 2: %lf, 3: %lf, 4: %lf, 5: %lf)",
+        msg->data.at(0), msg->data.at(1), msg->data.at(2), msg->data.at(3), msg->data.at(4), msg->data.at(5)
+    );
+
+    // メッセージのバッファーサイズを適切に制限
+    int bytes_written = 8;
+    char buf[bytes_written];
 
     // メッセージをバッファに書き込む
-    bytes_written = snprintf(buf, sizeof(buf), "%5.3f,%5.3f,%5.3f\r\n", msg->linear.x, msg->linear.y, msg->angular.z);
-    RCLCPP_INFO(this->get_logger(), "serial_send: %s", buf);
+    // ---header
+    buf[0] = 0xFF;
+    // ---index
+    buf[1] = (uint8_t)idx_;
+    // ---data
+    union {
+        float f;
+        int32_t ui;
+    } data;
+    data.f = (float)msg->data.at(idx_);
+    buf[2] = (uint8_t)((data.ui & 0xFF000000) >> 24);
+    buf[3] = (uint8_t)((data.ui & 0x00FF0000) >> 16);
+    buf[4] = (uint8_t)((data.ui & 0x0000FF00) >> 8);
+    buf[5] = (uint8_t)((data.ui & 0x000000FF) >> 0);
+    // ---end
+    buf[6] = 0xFF;
 
-    if (bytes_written < 0 || bytes_written >= sizeof(buf))
+    // check serial data
+    RCLCPP_INFO(this->get_logger(), "serial_send:");
+    for (int i = 0; i < 8; i++)
     {
-        RCLCPP_ERROR(this->get_logger(), "Serial Failed: message formatting error");
-        return;
+        RCLCPP_INFO(this->get_logger(), "%x ", buf[i]);
     }
 
+    // send data
     int rec = write(fd1_, buf, bytes_written);
-
     if (rec < 0)
     {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Serial Failed: could not write");

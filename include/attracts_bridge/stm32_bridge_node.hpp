@@ -8,7 +8,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/string.hpp>
-#include <geometry_msgs/msg/twist.hpp>
+#include <std_msgs/msg/float32_multi_array.hpp>
 
 class Stm32Bridge : public rclcpp::Node
 {
@@ -17,14 +17,15 @@ public:
 
 private:
     int OpenSerialPort(const std::string& device_name);
-    void CmdVelCB(const geometry_msgs::msg::Twist::SharedPtr msg) const;
+    void CmdVelCB(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
 
 private:
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_sub_;
+    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_sub_;
 
 private:
     std::string device_name_;
     int fd1_;
+    int idx_;
 };
 
 #endif
