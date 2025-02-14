@@ -1,10 +1,12 @@
 #include "attracts_bridge/stm32_bridge_node.hpp"
 
+#include <rabcl/interface/uart.hpp>
+#include <rabcl_ros2/utils.hpp>
+
 Stm32Bridge::Stm32Bridge() : Node("stm32_bridge_node")
 {
-    cmd_sub_ = this->create_subscription<std_msgs::msg::Float32MultiArray>("cmd_vel", 10, std::bind(&Stm32Bridge::CmdVelCB, this, std::placeholders::_1));
+    cmd_sub_ = this->create_subscription<attracts_msgs::msg::AttractsCommand>("cmd", 10, std::bind(&Stm32Bridge::CmdCB, this, std::placeholders::_1));
 
-    // TODO: device_nameをパラメータに -> micro_ROSにするから適当でいっか
     device_name_ = "/dev/ttyACM0";
     fd1_ = OpenSerialPort(device_name_);
     if (fd1_ < 0)
@@ -41,44 +43,29 @@ int Stm32Bridge::OpenSerialPort(const std::string& device_name)
     return fd1;
 }
 
-void Stm32Bridge::CmdVelCB(const std_msgs::msg::Float32MultiArray::SharedPtr msg)
+void Stm32Bridge::CmdCB(const attracts_msgs::msg::AttractsCommand::SharedPtr msg)
 {
-    // インデックスを更新
-    idx_++;
-    if (idx_ >= 6)
-    {
-        idx_ = 0;
-    }
-    // idx_ = 0;
+    rabcl::Info info;
+    rabcl_ros2::Utils::CmdMsgToInfo(*msg, info);
 
-    // 元データを確認
-    RCLCPP_INFO(
-        this->get_logger(), "cmd_vel(0: %lf, 1: %lf, 2: %lf, 3: %lf, 4: %lf, 5: %lf)",
-        msg->data.at(0), msg->data.at(1), msg->data.at(2), msg->data.at(3), msg->data.at(4), msg->data.at(5)
-    );
+    rabcl::Uart uart;
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_CHASSIS_X, info.chassis_vel_x_);
+    SendSerialData(uart.uart_transmit_buffer_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_CHASSIS_Y, info.chassis_vel_y_);
+    SendSerialData(uart.uart_transmit_buffer_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_CHASSIS_Z, info.chassis_vel_z_);
+    SendSerialData(uart.uart_transmit_buffer_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_YAW, info.yaw_vel_);
+    SendSerialData(uart.uart_transmit_buffer_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_PITCH, info.pitch_vel_);
+    SendSerialData(uart.uart_transmit_buffer_);
+    uint8_t mode_data[4] = {info.load_mode_, info.fire_mode_, info.speed_mode_, info.chassis_mode_};
+    uart.Prepare4IntData((uint8_t)rabcl::UART_ID::UART_MODES, mode_data);
+    SendSerialData(uart.uart_transmit_buffer_);
+}
 
-    // メッセージのバッファーサイズを適切に制限
-    int bytes_written = 8;
-    char buf[bytes_written];
-
-    // メッセージをバッファに書き込む
-    // ---header
-    buf[0] = 0xFF;
-    // ---index
-    buf[1] = (uint8_t)idx_;
-    // ---data
-    union {
-        float f;
-        int32_t ui;
-    } data;
-    data.f = (float)msg->data.at(idx_);
-    buf[2] = (uint8_t)((data.ui & 0xFF000000) >> 24);
-    buf[3] = (uint8_t)((data.ui & 0x00FF0000) >> 16);
-    buf[4] = (uint8_t)((data.ui & 0x0000FF00) >> 8);
-    buf[5] = (uint8_t)((data.ui & 0x000000FF) >> 0);
-    // ---end
-    buf[6] = 0xFF;
-
+void Stm32Bridge::SendSerialData(const uint8_t buf[8])
+{
     // check serial data
     RCLCPP_INFO(this->get_logger(), "serial_send:");
     for (int i = 0; i < 8; i++)
@@ -87,7 +74,7 @@ void Stm32Bridge::CmdVelCB(const std_msgs::msg::Float32MultiArray::SharedPtr msg
     }
 
     // send data
-    int rec = write(fd1_, buf, bytes_written);
+    int rec = write(fd1_, buf, 8);
     if (rec < 0)
     {
         RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Serial Failed: could not write");

@@ -7,8 +7,7 @@
 #include <termios.h>
 
 #include <rclcpp/rclcpp.hpp>
-#include <std_msgs/msg/string.hpp>
-#include <std_msgs/msg/float32_multi_array.hpp>
+#include <attracts_msgs/msg/attracts_command.hpp>
 
 class Stm32Bridge : public rclcpp::Node
 {
@@ -17,10 +16,11 @@ public:
 
 private:
     int OpenSerialPort(const std::string& device_name);
-    void CmdVelCB(const std_msgs::msg::Float32MultiArray::SharedPtr msg);
+    void CmdCB(const attracts_msgs::msg::AttractsCommand::SharedPtr msg);
+    void SendSerialData(const uint8_t buf[8]);
 
 private:
-    rclcpp::Subscription<std_msgs::msg::Float32MultiArray>::SharedPtr cmd_sub_;
+    rclcpp::Subscription<attracts_msgs::msg::AttractsCommand>::SharedPtr cmd_sub_;
 
 private:
     std::string device_name_;
