@@ -5,8 +5,6 @@
 
 Stm32Bridge::Stm32Bridge() : Node("stm32_bridge_node")
 {
-    cmd_sub_ = this->create_subscription<attracts_msgs::msg::AttractsCommand>("cmd", 10, std::bind(&Stm32Bridge::CmdCB, this, std::placeholders::_1));
-
     device_name_ = "/dev/ttyACM0";
     fd1_ = OpenSerialPort(device_name_);
     if (fd1_ < 0)
@@ -14,11 +12,14 @@ Stm32Bridge::Stm32Bridge() : Node("stm32_bridge_node")
         RCLCPP_ERROR(this->get_logger(), "Serial Failed: could not open %s", device_name_.c_str());
         rclcpp::shutdown();
     }
+
+    cmd_sub_ = this->create_subscription<attracts_msgs::msg::AttractsCommand>("cmd", 10, std::bind(&Stm32Bridge::CmdCB, this, std::placeholders::_1));
 }
 
 int Stm32Bridge::OpenSerialPort(const std::string& device_name)
 {
-    int fd1 = open(device_name.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
+    int fd1 = open(device_name.c_str(), O_RDWR | O_NOCTTY);
+
     fcntl(fd1, F_SETFL, 0);
     struct termios conf_tio;
     tcgetattr(fd1, &conf_tio);
@@ -27,18 +28,15 @@ int Stm32Bridge::OpenSerialPort(const std::string& device_name)
     cfsetispeed(&conf_tio, BAUDRATE);
     cfsetospeed(&conf_tio, BAUDRATE);
 
+    conf_tio.c_cflag = CS8 | CLOCAL | CREAD | B115200;
+    conf_tio.c_iflag = IGNPAR;
     conf_tio.c_lflag &= ~(ECHO | ICANON);
 
-    conf_tio.c_cc[VMIN] = 0;
-    conf_tio.c_cc[VTIME] = 0;
+    conf_tio.c_cc[VMIN] = 1;
+    conf_tio.c_cc[VTIME] = 1;
 
+    tcflush(fd1, TCIOFLUSH);
     tcsetattr(fd1, TCSANOW, &conf_tio);
-
-    if (fd1_ < 0)
-    {
-        RCLCPP_ERROR(this->get_logger(), "Serial Failed: could not open %s", device_name_.c_str());
-        rclcpp::shutdown();
-    }
 
     return fd1;
 }
@@ -77,7 +75,16 @@ void Stm32Bridge::SendSerialData(const uint8_t buf[8])
     int rec = write(fd1_, buf, 8);
     if (rec < 0)
     {
-        RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Serial Failed: could not write");
+        RCLCPP_ERROR(this->get_logger(), "Failed to write: %s", strerror(errno));
+    }
+    else if (rec != 8)
+    {
+        RCLCPP_WARN(this->get_logger(), "Serial Warning: only %d bytes written", rec);
+    }
+    else
+    {
+        RCLCPP_INFO(this->get_logger(), "Serial Write Successful (8 bytes)");
+        tcdrain(fd1_);
     }
 }
 

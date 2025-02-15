@@ -24,8 +24,7 @@ private:
 
 private:
     std::string device_name_;
-    int fd1_;
-    int idx_;
+    int fd1_ = -1;
 };
 
 #endif
