@@ -29,8 +29,17 @@ ament_target_dependencies(stm32_bridge_node
   rabcl_ros2
 )
 
+add_executable(transceiver_module_bridge_node
+  src/transceiver_module_bridge_node.cpp
+)
+ament_target_dependencies(transceiver_module_bridge_node
+  rclcpp
+  attracts_msgs
+)
+
 install(TARGETS
   stm32_bridge_node
+  transceiver_module_bridge_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
