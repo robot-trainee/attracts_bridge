@@ -144,8 +144,8 @@ void TransceiverModuleBridge::ProcessFrame(uint8_t commandType, uint8_t* data, u
         } __attribute__((__packed__));
 
         DataInput* input = (DataInput*)data;
-        game_data_input_.mouse_delta_x += input->mouseDeltaX;
-        game_data_input_.mouse_delta_y += input->mouseDeltaY;
+        game_data_input_.mouse_delta_x = input->mouseDeltaX;
+        game_data_input_.mouse_delta_y = input->mouseDeltaY;
         game_data_input_.mouse_left_button = input->buttons & 0x01;
         game_data_input_.mouse_right_button = input->buttons & 0x02;
         game_data_input_.key_w = input->buttons & 0x04;
