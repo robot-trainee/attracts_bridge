@@ -53,9 +53,9 @@ void Stm32Bridge::CmdCB(const attracts_msgs::msg::AttractsCommand::SharedPtr msg
     SendSerialData(uart.uart_transmit_buffer_);
     uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_CHASSIS_Z, info.chassis_vel_z_);
     SendSerialData(uart.uart_transmit_buffer_);
-    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_YAW, info.yaw_vel_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_YAW, info.yaw_pos_);
     SendSerialData(uart.uart_transmit_buffer_);
-    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_PITCH, info.pitch_vel_);
+    uart.PrepareFloatData((uint8_t)rabcl::UART_ID::UART_PITCH, info.pitch_pos_);
     SendSerialData(uart.uart_transmit_buffer_);
     uint8_t mode_data[4] = {info.load_mode_, info.fire_mode_, info.speed_mode_, info.chassis_mode_};
     uart.Prepare4IntData((uint8_t)rabcl::UART_ID::UART_MODES, mode_data);
