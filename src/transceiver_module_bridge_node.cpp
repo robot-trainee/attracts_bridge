@@ -140,18 +140,55 @@ void TransceiverModuleBridge::ProcessFrame(uint8_t commandType, uint8_t* data, u
         struct DataInput {
             int16_t mouseDeltaX;
             int16_t mouseDeltaY;
-            uint8_t buttons;
+            uint8_t mouseButtons;
+            uint8_t keyboard1;
+            uint8_t keyboard2;
+            uint8_t keyboard3;
+            uint8_t keyboard4;
         } __attribute__((__packed__));
 
         DataInput* input = (DataInput*)data;
+
+        // マウス移動
         game_data_input_.mouse_delta_x = input->mouseDeltaX;
         game_data_input_.mouse_delta_y = input->mouseDeltaY;
-        game_data_input_.mouse_left_button = input->buttons & 0x01;
-        game_data_input_.mouse_right_button = input->buttons & 0x02;
-        game_data_input_.key_w = input->buttons & 0x04;
-        game_data_input_.key_a = input->buttons & 0x08;
-        game_data_input_.key_s = input->buttons & 0x10;
-        game_data_input_.key_d = input->buttons & 0x20;
+        // マウスボタン
+        game_data_input_.mouse_left_button = input->mouseButtons & 0x01;
+        game_data_input_.mouse_right_button = input->mouseButtons & 0x02;
+        game_data_input_.mouse_wheel_button = input->mouseButtons & 0x04;
+        game_data_input_.mouse_side_1_button = input->mouseButtons & 0x08;
+        game_data_input_.mouse_side_2_button = input->mouseButtons & 0x10;
+        // キーボード - バイト1 (数字キー + Tab, Q, W)
+        game_data_input_.key_1 = input->keyboard1 & 0x01;
+        game_data_input_.key_2 = input->keyboard1 & 0x02;
+        game_data_input_.key_3 = input->keyboard1 & 0x04;
+        game_data_input_.key_4 = input->keyboard1 & 0x08;
+        game_data_input_.key_5 = input->keyboard1 & 0x10;
+        game_data_input_.key_tab = input->keyboard1 & 0x20;
+        game_data_input_.key_q = input->keyboard1 & 0x40;
+        game_data_input_.key_w = input->keyboard1 & 0x80;
+        // キーボード - バイト2 (E, R, T, A, S, D, F, G)
+        game_data_input_.key_e = input->keyboard2 & 0x01;
+        game_data_input_.key_r = input->keyboard2 & 0x02;
+        game_data_input_.key_t = input->keyboard2 & 0x04;
+        game_data_input_.key_a = input->keyboard2 & 0x08;
+        game_data_input_.key_s = input->keyboard2 & 0x10;
+        game_data_input_.key_d = input->keyboard2 & 0x20;
+        game_data_input_.key_f = input->keyboard2 & 0x40;
+        game_data_input_.key_g = input->keyboard2 & 0x80;
+        // キーボード - バイト3 (H, Shift, Z, X, C, V, B)
+        game_data_input_.key_h = input->keyboard3 & 0x01;
+        game_data_input_.key_shift = input->keyboard3 & 0x02;
+        game_data_input_.key_z = input->keyboard3 & 0x04;
+        game_data_input_.key_x = input->keyboard3 & 0x08;
+        game_data_input_.key_c = input->keyboard3 & 0x10;
+        game_data_input_.key_v = input->keyboard3 & 0x20;
+        game_data_input_.key_b = input->keyboard3 & 0x40;
+        // キーボード - バイト4 (Ctrl, Alt, Space, Enter)
+        game_data_input_.key_ctrl = input->keyboard4 & 0x01;
+        game_data_input_.key_alt = input->keyboard4 & 0x02;
+        game_data_input_.key_space = input->keyboard4 & 0x04;
+        game_data_input_.key_enter = input->keyboard4 & 0x08;
 
         control_lost_counter_ = 0;  // 通信正常
     }
